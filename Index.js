@@ -10,6 +10,7 @@ connection.connect(function(err)
 	if (err) throw err;
 	console.log('connected to database');
 });
+
 app.get('/api/syllabus/', function (req, res)
 {
 	connection.query("SELECT * FROM syllabus", function (err, result, fields)
@@ -52,12 +53,22 @@ app.get('/api/syllabus/:id/', function (req, res, next)
 	{
 		if (err) throw err;
 		console.log(result);
-		res.send(result);
+		// console.log(fields);
+		// console.log(err);
+		if(result.length > 0)
+		{
+			res.send(result);
+		}
+		else
+		{
+			res.status("404");
+		}
 		res.end();
 	});
 });
 
-app.put('/api/syllabus/:id/', function (req, res, next) {
+app.put('/api/syllabus/:id/', function (req, res, next)
+{
 	console.log(req.params.id);
 	const updateQuery = "UPDATE syllabus SET name = ?, description = ?, learningObjectives = ? where id = ? AND userId = ?";
 	const values = [req.body.name, req.body.description, req.body.learningObjectives, req.params.id, req.body.userId];
@@ -79,7 +90,8 @@ app.put('/api/syllabus/:id/', function (req, res, next) {
 	});
 });
 
-app.delete('/api/syllabus/:id/', function (req, res, next) {
+app.delete('/api/syllabus/:id/', function (req, res, next)
+{
 	console.log(req.params.id);
 	const deleteQuery = `UPDATE syllabus SET status = 0 where id = ${req.params.id}`;
 	connection.query(deleteQuery, function (err, result, fields)
@@ -90,4 +102,5 @@ app.delete('/api/syllabus/:id/', function (req, res, next) {
 		res.end();
 	});
 })
+
 app.listen(3000);

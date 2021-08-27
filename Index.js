@@ -1,5 +1,5 @@
 var connection = require('./MyConnection.js');
-var mysql = require('mysql')
+var mysql = require('mysql');
 var bodyParser = require('body-parser');
 var express = require('express');
 var app = express();
@@ -59,7 +59,7 @@ app.post('/api/signup/', (req, res) => {
 		getData["token"] = uuidv4();
 		const signUpQuery = "insert into users set ?";
 		connection.query(signUpQuery, getData, (err, result, fields) => {
-			res.send("You are signed up.");
+			res.send({"Message": "You are signed up."});
 		})
 	}
 })
@@ -74,8 +74,13 @@ app.get('/api/signin/', (req, res) => {
 		const sql = mysql.format(signInQuery, values)
 		connection.query(sql, (err, result, fields) => {
 			if (err) throw err;
-			res.send(result);
-			console.log(result);
+			if(result.length == 0)
+			{
+				res.status(400)
+				res.send({"Error": "Invalid User Name/Password"})
+			}
+			res.send(result[0]);
+			console.log(result[0]);
 		});
 	}
 })

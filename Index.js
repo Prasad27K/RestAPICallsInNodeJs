@@ -81,11 +81,18 @@ app.get('/api/signin/', (req, res) => {
 })
 
 app.get('/api/syllabus/', (req, res) => {
-	connection.query("SELECT * FROM syllabus", (err, result, fields) => {
-		if (err) throw err;
-		res.status("200")
-		console.log(fields);
-		res.send(result);
+	const token = req.headers.authorization;
+	console.log(token);
+	getUserId(token, res, (userId) => {
+		const sqlQuery = "SELECT * FROM syllabus WHERE userId = ? AND status = 1";
+		const value = [userId];
+		const sql = mysql.format(sqlQuery, value);
+		connection.query(sql, (err, result, fields) => {
+			if (err) throw err;
+			res.status("200")
+			console.log(fields);
+			res.send(result);
+		});
 	});
 });
 
@@ -108,11 +115,6 @@ function validations(res, postData)
 		errorMessage["learningObjectives"] = "Learning Objectives needs value";
 		isValid = false
 	}
-	if(postData.userId == undefined || postData.userId == "")
-	{
-		errorMessage["userId"] = "User id needs value";
-		isValid = false
-	}
 	if(!isValid)
 	{
 		res.status(400);
@@ -123,103 +125,141 @@ function validations(res, postData)
 
 app.post('/api/syllabus/', (req, res) => {
 	let postData  = req.body;
-	if(validations(res, postData))
-	{
-		const insertQUery = `INSERT INTO syllabus SET ?, status = 1`;
-		connection.query(insertQUery, postData, (err, result, fields) => {
-			if (err) throw err;
-			res.status("201");
-			console.log(result);
-			const userId = req.body.userId;
-			const values = [result.insertId, userId];
-			const sqlQuery = `SELECT * FROM syllabus WHERE id = ? AND userId = ?`;
-			const sql = mysql.format(sqlQuery, values)
-			connection.query(sql, (err, result, fields) => {
-				if (err) throw err;
-				console.log(result);
-				res.send(result);
-			});
-		});
-	}
-});		
-
-app.get('/api/syllabus/:id/', (req, res, next) => {
-	const sqlQuery = `SELECT id from syllabus where id = ?`;
-	const value = [req.params.id];
-	const sql = mysql.format(sqlQuery, value);
-	connection.query(sql, (err, result, fields) => {
-		if(result.length == 0)
+	const token = req.headers.authorization;
+	console.log(token);
+	getUserId(token, res, (userId) => {
+		if(validations(res, postData))
 		{
-			res.status(404);
-		}
-		else
-		{
-			const sqlQuery = `SELECT * FROM syllabus WHERE id = ?`;
-			const value = [req.params.id];
-			const sql = mysql.format(sqlQuery, value);
-			connection.query(sql, (err, result, fields) => {
-				if (err) throw err;
-				console.log(result);
-				res.send(result);
-			});
-		}
-	});
-});
-
-app.put('/api/syllabus/:id/', (req, res, next) => {
-	console.log(req.params.id);
-	const sqlQuery = `SELECT id from syllabus where id = ?`;
-	const value = [req.params.id];
-	const sql = mysql.format(sqlQuery, value);
-	connection.query(sql, (err, result, fields) => {
-		if(result.length == 0)
-		{
-			res.status(404);
-		}
-		else
-		{
-			const updateQuery = "UPDATE syllabus SET name = ?, description = ?, learningObjectives = ? where id = ? AND userId = ?";
-			const values = [req.body.name, req.body.description, req.body.learningObjectives, req.params.id, req.body.userId];
-			const sql = mysql.format(updateQuery, values);
-			connection.query(sql, (err, result, fields) => {
+			postData["userId"] = userId;
+			const insertQUery = `INSERT INTO syllabus SET ?, status = 1`;
+			connection.query(insertQUery, postData, (err, result, fields) => {
 				if (err) throw err;
 				res.status("201");
 				console.log(result);
-				const userId = req.body.userId;
-				const values = [req.params.id, userId];
-				const sqlQuery = `SELECT * FROM syllabus WHERE id = ? AND userId = ?` ;
-				const sql = mysql.format(sqlQuery, values);
+				const values = [result.insertId, userId];
+				const sqlQuery = `SELECT * FROM syllabus WHERE id = ? AND userId = ?`;
+				const sql = mysql.format(sqlQuery, values)
 				connection.query(sql, (err, result, fields) => {
 					if (err) throw err;
-					res.status("201");
+					console.log(result);
 					res.send(result);
 				});
 			});
 		}
 	});
+});		
+
+app.get('/api/syllabus/:id/', (req, res, next) => {
+	const token = req.headers.authorization;
+	console.log(token);
+	getUserId(token, res, (userId) => {
+		const sqlQuery = `SELECT id from syllabus where id = ?`;
+		const values = [req.params.id];
+		const sql = mysql.format(sqlQuery, values);
+		connection.query(sql, (err, result, fields) => {
+			if(result.length == 0)
+			{
+				res.status(404);
+				res.send({"Error": "Please Provide valid Id"})
+			}
+			else
+			{
+				const sqlQuery = `SELECT * FROM syllabus WHERE id = ? AND userId = ?`;
+				const value = [req.params.id, userId];
+				const sql = mysql.format(sqlQuery, value);
+				connection.query(sql, (err, result, fields) => {
+					if (err) throw err;
+					console.log(result);
+					res.send(result);
+				});
+			}
+		});
+	})
+});
+
+app.put('/api/syllabus/:id/', (req, res, next) => {
+	console.log(req.params.id);
+	const token = req.headers.authorization;
+	console.log(token);
+	getUserId(token, res, (userId) => {
+		const sqlQuery = `SELECT id from syllabus where id = ? AND userId = ?`;
+		const value = [req.params.id, userId];
+		const sql = mysql.format(sqlQuery, value);
+		connection.query(sql, (err, result, fields) => {
+			if(result.length == 0)
+			{
+				res.status(404);
+				res.send({"Error": "Please Provide valid Id"})
+			}
+			else
+			{
+				const updateQuery = "UPDATE syllabus SET name = ?, description = ?, learningObjectives = ? where id = ? AND userId = ?";
+				const values = [req.body.name, req.body.description, req.body.learningObjectives, req.params.id, userId];
+				const sql = mysql.format(updateQuery, values);
+				connection.query(sql, (err, result, fields) => {
+					if (err) throw err;
+					res.status("201");
+					console.log(result);
+					const values = [req.params.id, userId];
+					const sqlQuery = `SELECT * FROM syllabus WHERE id = ? AND userId = ?` ;
+					const sql = mysql.format(sqlQuery, values);
+					connection.query(sql, (err, result, fields) => {
+						if (err) throw err;
+						res.status("201");
+						res.send(result);
+					});
+				});
+			}
+		});
+	});
 });
 
 app.delete('/api/syllabus/:id/', (req, res, next) => {
 	console.log(req.params.id);
-	const sqlQuery = `SELECT id from syllabus where id = ?`;
-	const value = [req.params.id];
-	const sql = mysql.format(sqlQuery, value);
-	connection.query(sql, (err, result, fields) => {
-		if(result.length == 0)
-		{
-			res.status(404);
-		}
-		else
-		{
-			const deleteQuery = `UPDATE syllabus SET status = 0 where id = ?`;
-			const value = [req.params.id];
-			const sql = mysql.format(deleteQuery, value);
-			connection.query(sql, (err, result, fields) => {
-				if (err) throw err;
-				res.status("200");
-			});	
-		}
+	const token = req.headers.authorization;
+	console.log(token);
+	getUserId(token, res, (userId) => {
+		const sqlQuery = `SELECT id from syllabus where id = ? and userId = ?`;
+		const value = [req.params.id, userId];
+		const sql = mysql.format(sqlQuery, value);
+		connection.query(sql, (err, result, fields) => {
+			if(result.length == 0)
+			{
+				res.status(404);
+				res.send({"Error": "Id not found."})
+			}
+			else
+			{
+				const deleteQuery = `UPDATE syllabus SET status = 0 where id = ? AND userId = ?`;
+				const value = [req.params.id, userId];
+				const sql = mysql.format(deleteQuery, value);
+				connection.query(sql, (err, result, fields) => {
+					if (err) throw err;
+					res.status("200");
+				});	
+			}
+		});
 	});
 });
 
+function getUserId(token, res, callback)
+{
+	console.log(token)
+	if(token == undefined || token == "")
+	{
+		res.status(401);
+		res.send({"Error": "Unauthorized User"})
+	}
+	else
+	{
+		const sqlQuery = "SELECT userId FROM users WHERE token = ?";
+		const value = [token];
+		const sql = mysql.format(sqlQuery, value);
+		connection.query(sql, (err, result, fields) => {
+			let userId = result[0]["userId"];
+			callback(userId);
+		})
+
+	}	
+}
 app.listen(3000);

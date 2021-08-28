@@ -20,17 +20,55 @@ connection.connect((err) => {
 	console.log('connected to database.');
 });
 
+app.post('/api/signup/', (req, res) => {
+	let getData = req.body;
+	if(isUserDataValid(res, getData)) {
+		getData["token"] = uuidv4();
+		const signUpQuery = "insert into users set ?";
+		connection.query(signUpQuery, getData, (err, result, fields) => {
+			res.send({"Message": "You are signed up."});
+		})
+	}
+})
+
+app.get('/api/signin/', (req, res) => {
+	let getData = req.body;
+	console.log(getData);
+	if(isUserDataValid(res, getData))
+	{
+		const signInQuery = "select token from  users where userName = ? AND password = ?";
+		const values = [req.body.userName, req.body.password]
+		const sql = mysql.format(signInQuery, values)
+		connection.query(sql, (err, result, fields) => {
+			if (err) throw err;
+			if(result.length == 0) {
+				res.status(400)
+				res.send({"Error": "Invalid User Name/Password"})
+			}
+			res.send(result[0]);
+			console.log(result[0]);
+		});
+	}
+})
+
+
+app.use(validateToken);
+app.use(validateUserId);
+
 function validateToken(req, res, next) {
 	const token = req.headers.authorization;
 	if(token == undefined || token == "")
 	{
 		res.status(401).send({"Error": "Unauthorized User"})
 	}
-	next();
+	else {
+		req["token"] = token;
+		next();
+	}
 }
 
 function validateUserId(req, res, next) {
-	const token = req.headers.authorization;
+	const token = req["token"];
 	const sqlQuery = "SELECT userId FROM users WHERE token = ?";
 	const value = [token];
 	const sql = mysql.format(sqlQuery, value);
@@ -43,13 +81,10 @@ function validateUserId(req, res, next) {
 		else {
 			const userId = result[0]["userId"];
 			req["userId"] = userId;
+			next();
 		}		
-		next();
 	})
 }
-
-app.use(validateToken);
-app.use(validateUserId);
 
 function isUserDataValid(res, getData) {
 	let authenticationErrors = {};
@@ -81,37 +116,6 @@ function isUserDataValid(res, getData) {
 	}
 	return isValid;
 }
-
-app.post('/api/signup/', (req, res) => {
-	let getData = req.body;
-	if(isUserDataValid(res, getData)) {
-		getData["token"] = uuidv4();
-		const signUpQuery = "insert into users set ?";
-		connection.query(signUpQuery, getData, (err, result, fields) => {
-			res.send({"Message": "You are signed up."});
-		})
-	}
-})
-
-app.get('/api/signin/', (req, res) => {
-	let getData = req.body;
-	console.log(getData);
-	if(isUserDataValid(res, getData))
-	{
-		const signInQuery = "select token from  users where userName = ? AND password = ?";
-		const values = [req.body.userName, req.body.password]
-		const sql = mysql.format(signInQuery, values)
-		connection.query(sql, (err, result, fields) => {
-			if (err) throw err;
-			if(result.length == 0) {
-				res.status(400)
-				res.send({"Error": "Invalid User Name/Password"})
-			}
-			res.send(result[0]);
-			console.log(result[0]);
-		});
-	}
-})
 
 app.get('/api/syllabus/', (req, res) => {
 	const userId = req.userId;

@@ -15,6 +15,59 @@ var passwordValidator = require('password-validator');
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
+
+app.use(validateToken);
+app.use(validateUserId);
+
+function isPathExist(req, next) {
+	let isPathExist = false;
+	const path = req.path;
+	if(path == "/api/signin/" || path == "/api/signup/") {
+		next();
+		isPathExist = true;
+	}
+	return isPathExist;
+}
+
+function validateToken(req, res, next) {
+	if(!isPathExist(req, next)) {
+		const token = req.headers.authorization;
+		if(token == undefined || token == "")
+		{
+			res.status(401).send({"Error": "Unauthorized User"})
+		}
+		else {
+			req["token"] = token;
+			next();
+		}
+	}
+}
+
+function validateUserId(req, res, next) {
+	if(!isPathExist(req, next)) {
+		const token = req["token"];
+		const sqlQuery = "SELECT userId FROM users WHERE token = ?";
+		const value = [token];
+		connection.promise().execute(sqlQuery, value)
+		.then(([result, fields]) => {
+			console.log(result);
+			if(result.length == 0) {
+				res.status(401).send({"Error": "Unauthorized User"});
+			}
+			else {
+				const userId = result[0]["userId"];
+				console.log(userId);
+				req["userId"] = userId;
+				next();
+			}		
+		})
+		.catch((err) => {
+			console.log(err)
+			res.status(500);
+		})
+	}
+}
+
 app.post('/api/signup/', (req, res) => {
 	let getData = req.body;
 	if(isUserDataValid(res, getData)) {
@@ -33,8 +86,7 @@ app.get('/api/signin/', (req, res) => {
 	{
 		const signInQuery = "select token from  users where userName = ? AND password = ?";
 		const values = [req.body.userName, req.body.password]
-		const sql = mysql.format(signInQuery, values)
-		connection.query(sql, (err, result, fields) => {
+		connection.execute(signInQuery, values, (err, result, fields) => {
 			if (err) throw err;
 			if(result.length == 0) {
 				res.status(400)
@@ -45,55 +97,6 @@ app.get('/api/signin/', (req, res) => {
 		});
 	}
 })
-
-
-app.use(validateToken);
-app.use(validateUserId);
-
-function isPathExist(req, next) {
-	let isPathExist = false;
-	const path = req.path;
-	if(path == "/api/signin/" || path == "/api/signup/") {
-		next();
-		isPathExist true;
-	}
-	return isPathExist;
-}
-
-function validateToken(req, res, next) {
-	if(!isPathExist) {
-		const token = req.headers.authorization;
-		if(token == undefined || token == "")
-		{
-			res.status(401).send({"Error": "Unauthorized User"})
-		}
-		else {
-			req["token"] = token;
-			next();
-		}
-	}
-}
-
-function validateUserId(req, res, next) {
-	const token = req["token"];
-	const sqlQuery = "SELECT userId FROM users WHERE token = ?";
-	const value = [token];
-	connection.promise().execute(sqlQuery, value)
-	.then(([result, fields]) => {
-		console.log(result);
-		if(result.length == 0) {
-			res.status(401).send({"Error": "Unauthorized User"});
-		}
-		else {
-			const userId = result[0]["userId"];
-			console.log(userId);
-			req["userId"] = userId;
-			next();
-		}		
-	})
-	.catch(console.log)
-	.then(() => connection.end)
-}
 
 function isUserDataValid(res, getData) {
 	let authenticationErrors = {};
@@ -135,8 +138,10 @@ app.get('/api/syllabus/', (req, res) => {
 	.then(([rows, fields]) => {
 		res.status("200").send(rows);
 	})
-	.catch(console.log)
-	.then(() => connection.end());
+	.catch((err) => {
+		console.log(err)
+		res.status(500);
+	})
 });
 
 function validations(res, postData)
@@ -182,8 +187,10 @@ app.post('/api/syllabus/', (req, res) => {
 			console.log(result[0]);
 			res.send(result[0]);
 		})
-		.catch(console.log)
-		.then(() => connection.end())
+		.catch((err) => {
+			console.log(err)
+			res.status(500);
+		})
 	}
 });
 
@@ -195,10 +202,11 @@ app.get('/api/syllabus/:id/', (req, res, next) => {
 	connection.promise().execute(sqlQuery, values)
 	.then((result) => {
 		console.log(result);
+		result = result[0];
 		if(result.length == 0) {
 			res.status(404).send({"Error": "Please Provide valid Id"})
 		}
-		return result[0];
+		return result;
 	})
 	.then((result) => {
 		const id = result[0].id;
@@ -209,8 +217,10 @@ app.get('/api/syllabus/:id/', (req, res, next) => {
 	.then((result) => {
 		res.send(result[0]);
 	})
-	.catch(console.log)
-	.then(() => connection.end());
+	.catch((err) => {
+		console.log(err)
+		res.status(500);
+	})
 });
 
 app.put('/api/syllabus/:id/', (req, res, next) => {
@@ -220,32 +230,36 @@ app.put('/api/syllabus/:id/', (req, res, next) => {
 	const values = [id, userId];
 	connection.promise().execute(sqlQuery, values)
 	.then((result) => {
+		result = result[0];
 		if(result.length == 0) {
 			res.status(404);
 			res.send({"Error": "Please Provide valid Id"})
 		}
 		else
 		{
-			return result[0];
+			return result;
 		}
 	})
 	.then((result) => {
 		const id = result[0].id;
 		const updateQuery = "UPDATE syllabus SET name = ?, description = ?, learningObjectives = ? where id = ?";
 		const values = [req.body.name, req.body.description, req.body.learningObjectives, id,];
-		connection.query(updateQuery, values);
+		connection.promise().execute(updateQuery, values);
 		return id;
 	})
 	.then((result) => {
 		const value = [result];
 		const sqlQuery = `SELECT * FROM syllabus WHERE id = ?` ;
-		return connection.query(sqlQuery, value);
+		return connection.promise().execute(sqlQuery, value);
 	})
 	.then((result) => {
 		res.status("201");
 		res.send(result[0]);
 	})
-	.catch(console.log);
+	.catch((err) => {
+		console.log(err)
+		res.status(500);
+	})
 });
 
 app.delete('/api/syllabus/:id/', (req, res, next) => {
@@ -254,26 +268,28 @@ app.delete('/api/syllabus/:id/', (req, res, next) => {
 	const id = req.params.id;
 	const sqlQuery = `SELECT id from syllabus where id = ? and userId = ?`;
 	const values = [id, userId];
-	connection.query(sqlQuery, values)
+	connection.promise().execute(sqlQuery, values)
 	.then((result) => {
+		result = result[0];
 		if(result.length == 0) {
 			res.status(404);
 			res.send({"Error": "Id not found."})
 		}
 		else
 		{
-			return result[0];
+			return result;
 		}
 	})
 	.then((result) => {
 		const id = result[0].id;
 		const deleteQuery = `UPDATE syllabus SET status = 0 where id = ?`;
 		const value = [id];
-		return connection.query(deleteQuery, value)
+		connection.promise().execute(deleteQuery, value)
+		res.status(200).send("");
 	})
-	.then((result) => {
-		res.send(result[0]);
+	.catch((err) => {
+		console.log(err)
+		res.status(500);
 	})
-	.catch();
 });
 app.listen(3000);

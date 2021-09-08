@@ -1,0 +1,32 @@
+{
+  "name": "nodejs",
+  "version": "1.0.0",
+  "main": "createServer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "cros": "^1.0.1",
+    "email-validator": "^2.0.4",
+    "express": "^4.17.1",
+    "gmail-validation": "^0.0.4",
+    "install": "^0.13.0",
+    "mysql": "^2.18.1",
+    "mysql2": "^2.3.0",
+    "password-validator": "^5.1.1",
+    "uuid": "^8.3.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Prasad27K/RestAPICallsInNodeJs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Prasad27K/RestAPICallsInNodeJs/issues"
+  },
+  "homepage": "https://github.com/Prasad27K/RestAPICallsInNodeJs#readme",
+  "description": ""
+}

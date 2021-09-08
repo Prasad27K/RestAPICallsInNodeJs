@@ -3,6 +3,7 @@ var connection = require('./MyConnection.js');
 var bodyParser = require('body-parser');
 var express = require('express');
 var app = express();
+var cors = require('cors')
 
 const { v4: uuidv4 } = require('uuid');
 console.log(uuidv4());
@@ -11,7 +12,7 @@ var emailValidator = require("email-validator");
 console.log(emailValidator.validate("test@email.com"));
 
 var passwordValidator = require('password-validator');
-
+app.use(cors())
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
@@ -79,7 +80,7 @@ app.post('/api/signup/', (req, res) => {
 	}
 })
 
-app.get('/api/signin/', (req, res) => {
+app.post('/api/signin/', (req, res) => {
 	let getData = req.body;
 	console.log(getData);
 	if(isUserDataValid(res, getData))
@@ -90,7 +91,9 @@ app.get('/api/signin/', (req, res) => {
 			if (err) throw err;
 			if(result.length == 0) {
 				res.status(400)
+				console.log({"Error": "Invalid User Name/Password"});
 				res.send({"Error": "Invalid User Name/Password"})
+
 			}
 			res.send(result[0]);
 			console.log(result[0]);
@@ -117,7 +120,7 @@ function isUserDataValid(res, getData) {
 		.has().digits(1)
 		.has().not().spaces()
 	if (!schema.validate(getData.password))
-	{
+	{ 
 	    authenticationErrors["password"] = `Your Password is week.password should contain aleast 6 characters, one special character($, #, @, &) and one digit.`;
         isValid = false;
 	}
@@ -253,7 +256,7 @@ app.put('/api/syllabus/:id/', (req, res, next) => {
 		return connection.promise().execute(sqlQuery, value);
 	})
 	.then((result) => {
-		res.status("201");
+		res.status("200");
 		res.send(result[0]);
 	})
 	.catch((err) => {
